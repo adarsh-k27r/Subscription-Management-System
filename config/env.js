@@ -16,4 +16,5 @@ export const {
   QSTASH_NEXT_SIGNING_KEY,
   SERVER_URL,
   EMAIL_PASSWORD,
+  INTERNAL_API_KEY,
 } = process.env;

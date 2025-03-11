@@ -1,8 +1,10 @@
 import { Router} from 'express';
 import { sendReminders } from '../controllers/workflow.controller.js'
+import verifyInternalRequest from '../middlewares/endpoint.auth.middleware.js'
 
 const workflowRouter = Router();
 
-workflowRouter.post('/subscription/reminder', sendReminders);
+// Apply the middleware to protect internal routes
+workflowRouter.post('/subscription/reminder', verifyInternalRequest, sendReminders);
 
 export default workflowRouter;
