@@ -1,6 +1,7 @@
 import Subscription from '../models/subscription.model.js'
 import { workflowClient } from '../config/upstash.js'
 import { SERVER_URL } from '../config/env.js'
+import User from '../models/user.model.js'
 
 export const createSubscription = async (req, res, next) => {
   try {
@@ -28,6 +29,14 @@ export const createSubscription = async (req, res, next) => {
 
 export const getUserSubscriptions = async (req, res, next) => {
   try {
+    const user = await User.findById(req.params.id);
+
+    if(!user){
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
     // Check if the user is the same as the one in the token
     if(req.user.id !== req.params.id) {
       const error = new Error('You are not the owner of this account');
