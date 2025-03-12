@@ -17,4 +17,8 @@ export const {
   SERVER_URL,
   EMAIL_PASSWORD,
   INTERNAL_API_KEY,
+  REDIS_USERNAME,
+  REDIS_PASSWORD,
+  REDIS_HOST,
+  REDIS_PORT,
 } = process.env;
