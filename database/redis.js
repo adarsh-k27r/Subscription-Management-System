@@ -91,4 +91,5 @@ const connectRedis = async () => {
     }
 };
 
+export { connectRedis, client };
 export default connectRedis;

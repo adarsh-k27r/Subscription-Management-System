@@ -1,12 +1,12 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/user.model.js';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js'
-
-// In-memory token blacklist (for demonstration)
-// In production, use Redis or another persistent store
-export const tokenBlacklist = new Set();
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import User from "../models/user.model.js";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "../utils/jwt-helper.js";
+import {client} from "../database/redis.js";
 
 export const signUp = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -18,15 +18,15 @@ export const signUp = async (req, res, next) => {
     // Check if a user already exists
     const existingUser = await User.findOne({ email });
 
-    if(existingUser) {
-      const error = new Error('User already exists');
+    if (existingUser) {
+      const error = new Error("User already exists");
       error.statusCode = 409;
       throw error;
     }
 
     // Validate password length before hashing
     if (password.length < 8) {
-      const error = new Error('Password must be at least 8 characters long');
+      const error = new Error("Password must be at least 8 characters long");
       error.statusCode = 400;
       throw error;
     }
@@ -35,9 +35,13 @@ export const signUp = async (req, res, next) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const newUsers = await User.create([{ name, email, password: hashedPassword }], { session });
+    const newUsers = await User.create(
+      [{ name, email, password: hashedPassword }],
+      { session }
+    );
 
-    const token = jwt.sign({ userId: newUsers[0]._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const access_token = await signAccessToken(newUsers[0]._id);
+    const refresh_token = await signRefreshToken(newUsers[0]._id);
 
     await session.commitTransaction();
     session.endSession();
@@ -47,18 +51,19 @@ export const signUp = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message: "User created successfully",
       data: {
-        token,
+        access_token,
+        refresh_token,
         user: userWithoutPassword,
-      }
-    })
+      },
+    });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     next(error);
   }
-}
+};
 
 export const signIn = async (req, res, next) => {
   try {
@@ -67,58 +72,90 @@ export const signIn = async (req, res, next) => {
     // Get user with password for authentication
     const user = await User.findOne({ email });
 
-    if(!user) {
-      const error = new Error('User not found');
+    if (!user) {
+      const error = new Error("User not found");
       error.statusCode = 404;
       throw error;
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    if(!isPasswordValid) {
-      const error = new Error('Invalid password');
+    if (!isPasswordValid) {
+      const error = new Error("Invalid password");
       error.statusCode = 401;
       throw error;
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const access_token = await signAccessToken(user._id);
+    const refresh_token = await signRefreshToken(user._id);
 
     // Destructure user object to exclude password
     const { password: _, ...userWithoutPassword } = user.toObject();
 
     res.status(200).json({
       success: true,
-      message: 'User signed in successfully',
+      message: "User signed in successfully",
       data: {
-        token,
+        access_token,
+        refresh_token,
         user: userWithoutPassword,
-      }
+      },
     });
   } catch (error) {
     next(error);
   }
-}
+};
 
 export const signOut = async (req, res, next) => {
   try {
-    // Get the token from the authorization header
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
+    const access_token = req.headers.authorization?.split(" ")[1];
+    const { refreshToken } = req.body;
+
+    if (!access_token || !refreshToken) {
       return res.status(400).json({
         success: false,
-        message: 'No token provided'
+        message: "No token provided",
       });
     }
 
-    // Add the token to the blacklist
-    tokenBlacklist.add(token);
-    
+    // Invalidate Refresh Token
+    const userId = await verifyRefreshToken(refreshToken);
+    const redisKey = `auth:${userId.toString()}`;
+    await client.del(redisKey);
+
     res.status(200).json({
       success: true,
-      message: 'User signed out successfully'
+      message: "User signed out successfully",
     });
   } catch (error) {
     next(error);
   }
-}
+};
+
+export const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      const error = new Error("Please Login Again");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const userId = await verifyRefreshToken(refreshToken);
+
+    const access_token = await signAccessToken(userId);
+    const refresh_token = await signRefreshToken(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Token refreshed",
+      data: {
+        access_token,
+        refresh_token,
+      },
+    });
+  } catch (error) {
+    console.error(error.message);
+    next(error);
+  }
+};

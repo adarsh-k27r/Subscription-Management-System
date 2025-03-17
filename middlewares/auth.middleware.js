@@ -1,7 +1,5 @@
-import jwt from 'jsonwebtoken'
-import { JWT_SECRET } from '../config/env.js'
-import User from '../models/user.model.js'
-import { tokenBlacklist } from '../controllers/auth.controller.js'
+import { verifyAccessToken } from '../utils/jwt-helper.js';
+import User from '../models/user.model.js';
 
 const authorize = async (req, res, next) => {
   try {
@@ -13,14 +11,9 @@ const authorize = async (req, res, next) => {
 
     if(!token) return res.status(401).json({ message: 'Unauthorized' });
 
-    // Check if token is blacklisted
-    if(tokenBlacklist.has(token)) {
-      return res.status(401).json({ message: 'Token revoked. Please login again.' });
-    }
+    const decoded = await verifyAccessToken(token);
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.sub);
 
     if(!user) return res.status(401).json({ message: 'Unauthorized' });
 
