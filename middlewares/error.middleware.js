@@ -5,6 +5,16 @@ const errorMiddleware = (err, req, res, next) => {
       error.message = err.message;
   
       console.error(err);
+
+      // CORS validation error
+      if (err.message === 'Not allowed by CORS') {
+        return res.status(403).json({
+          success: false,
+          message: 'Origin not allowed by CORS policy',
+          error: 'CORS_POLICY_VIOLATION',
+          requestId: req.headers['x-request-id'] || null,
+        });
+      }
   
       // Mongoose bad ObjectId
       if (err.name === 'CastError') {

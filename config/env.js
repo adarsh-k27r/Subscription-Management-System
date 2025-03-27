@@ -23,4 +23,11 @@ export const {
   REDIS_PASSWORD,
   REDIS_HOST,
   REDIS_PORT,
+  CORS_ALLOWED_ORIGINS,
+  CORS_MAX_AGE,
 } = process.env;
+
+// Parse comma-separated allowed origins into an array
+export const ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS 
+  ? CORS_ALLOWED_ORIGINS.split(',') 
+  : [];
