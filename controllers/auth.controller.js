@@ -7,6 +7,15 @@ import {
   verifyRefreshToken,
 } from "../utils/jwt-helper.js";
 import {client} from "../database/redis.js";
+import { NODE_ENV } from "../config/env.js";
+
+// Cookie options for refresh token
+const refreshTokenCookieOptions = {
+  httpOnly: true,
+  secure: NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
 
 export const signUp = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -46,6 +55,9 @@ export const signUp = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
+    // Set refresh token in HTTP-only cookie
+    res.cookie('refreshToken', refresh_token, refreshTokenCookieOptions);
+
     // Use destructuring to exclude password
     const { password: _, ...userWithoutPassword } = newUsers[0].toObject();
 
@@ -54,7 +66,6 @@ export const signUp = async (req, res, next) => {
       message: "User created successfully",
       data: {
         access_token,
-        refresh_token,
         user: userWithoutPassword,
       },
     });
@@ -89,6 +100,9 @@ export const signIn = async (req, res, next) => {
     const access_token = await signAccessToken(user._id);
     const refresh_token = await signRefreshToken(user._id);
 
+    // Set refresh token in HTTP-only cookie
+    res.cookie('refreshToken', refresh_token, refreshTokenCookieOptions);
+
     // Destructure user object to exclude password
     const { password: _, ...userWithoutPassword } = user.toObject();
 
@@ -97,7 +111,6 @@ export const signIn = async (req, res, next) => {
       message: "User signed in successfully",
       data: {
         access_token,
-        refresh_token,
         user: userWithoutPassword,
       },
     });
@@ -108,13 +121,12 @@ export const signIn = async (req, res, next) => {
 
 export const signOut = async (req, res, next) => {
   try {
-    const access_token = req.headers.authorization?.split(" ")[1];
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken;
 
-    if (!access_token || !refreshToken) {
+    if (!refreshToken) {
       return res.status(400).json({
         success: false,
-        message: "No token provided",
+        message: "No refresh token found",
       });
     }
 
@@ -122,6 +134,9 @@ export const signOut = async (req, res, next) => {
     const userId = await verifyRefreshToken(refreshToken);
     const redisKey = `auth:${userId.toString()}`;
     await client.del(redisKey);
+
+    // Clear the refresh token cookie
+    res.clearCookie('refreshToken', refreshTokenCookieOptions);
 
     res.status(200).json({
       success: true,
@@ -134,7 +149,8 @@ export const signOut = async (req, res, next) => {
 
 export const refreshToken = async (req, res, next) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies.refreshToken;
+    
     if (!refreshToken) {
       const error = new Error("Please Login Again");
       error.statusCode = 401;
@@ -144,14 +160,16 @@ export const refreshToken = async (req, res, next) => {
     const userId = await verifyRefreshToken(refreshToken);
 
     const access_token = await signAccessToken(userId);
-    const refresh_token = await signRefreshToken(userId);
+    const new_refresh_token = await signRefreshToken(userId);
+
+    // Set new refresh token in HTTP-only cookie
+    res.cookie('refreshToken', new_refresh_token, refreshTokenCookieOptions);
 
     res.status(200).json({
       success: true,
       message: "Token refreshed",
       data: {
         access_token,
-        refresh_token,
       },
     });
   } catch (error) {
