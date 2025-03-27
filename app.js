@@ -1,6 +1,7 @@
 import express from "express";
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import helmet from 'helmet';
 import { PORT } from "./config/env.js";
 import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
@@ -11,14 +12,15 @@ import arcjetMiddleware from './middlewares/arcjet.middleware.js';
 import workflowRouter from './routes/workflow.route.js';
 import connectRedis from './database/redis.js';
 import corsOptions from './config/cors.js';
+import helmetConfig from './config/helmet.js';
 
 const app = express();
 
-// Apply middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(helmet(helmetConfig));
 app.use(arcjetMiddleware);
 
 app.use("/api/v1/auth", authRouter);
