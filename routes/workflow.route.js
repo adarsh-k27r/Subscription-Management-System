@@ -1,6 +1,6 @@
 import { Router} from 'express';
-import { sendReminders } from '../controllers/workflow.controller.js'
-import verifyInternalRequest from '../middlewares/endpoint.auth.middleware.js'
+import { sendReminders } from '../controllers/workflow.controller.js';
+import { verifyInternalRequest } from '../middlewares/auth.middleware.js';
 
 const workflowRouter = Router();
 
