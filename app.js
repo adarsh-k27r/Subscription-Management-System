@@ -13,6 +13,7 @@ import workflowRouter from './routes/workflow.route.js';
 import connectRedis from './database/redis.js';
 import corsOptions from './config/cors.js';
 import helmetConfig from './config/helmet.js';
+import { serve, setup } from './swagger.js';
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(cookieParser());
 app.use(helmet(helmetConfig));
 app.use(arcjetMiddleware);
 
+app.use("/api-docs", serve, setup); // Swagger documentation route
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
@@ -42,6 +44,7 @@ const startServer = async () => {
     
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
+      console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
