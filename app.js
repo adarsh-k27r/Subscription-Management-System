@@ -37,21 +37,36 @@ app.get("/", (req, res) => {
 // Error handling middleware - must be last
 app.use(errorMiddleware);
 
-const startServer = async () => {
-  try {
-    await connectDB();
-    await connectRedis();
-    
-    app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
-      console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
+// Initialize database connections when not in Lambda environment
+// This allows the app to be run locally or in Lambda
+if (process.env.NODE_ENV !== 'lambda') {
+  const startServer = async () => {
+    try {
+      await connectDB();
+      await connectRedis();
+      
+      app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+      });
+    } catch (error) {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    }
+  };
 
-startServer();
+  startServer();
+} else {
+  // For Lambda, initialize connections on cold start
+  (async () => {
+    try {
+      await connectDB();
+      await connectRedis();
+      console.log('Database connections established in Lambda environment');
+    } catch (error) {
+      console.error('Failed to establish database connections:', error);
+    }
+  })();
+}
 
 export default app;
