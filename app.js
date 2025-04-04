@@ -19,7 +19,7 @@ const app = express();
 
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(helmet(helmetConfig));
 app.use(arcjetMiddleware);
@@ -39,7 +39,7 @@ app.use(errorMiddleware);
 
 // Initialize database connections when not in Lambda environment
 // This allows the app to be run locally or in Lambda
-if (process.env.NODE_ENV !== 'lambda') {
+if (process.env.NODE_ENV !== 'production') {
   const startServer = async () => {
     try {
       await connectDB();
