@@ -4,7 +4,7 @@
  */
 import { NODE_ENV, ALLOWED_ORIGINS } from './env.js';
 
-const defaultProductionOrigins = [undefined];
+const defaultProductionOrigins = ['https://v1rvx0b2fl.execute-api.ap-south-1.amazonaws.com/prod', 'https://qstash.upstash.io', undefined];
 const defaultDevelopmentOrigins = ['http://localhost:3000', 'http://localhost:8080', undefined];
 
 const allowedOriginsList = ALLOWED_ORIGINS.length > 0

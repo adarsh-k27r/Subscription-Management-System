@@ -1,7 +1,7 @@
 import { NODE_ENV, ALLOWED_ORIGINS, CORS_MAX_AGE } from './env.js';
 
 // Default origins if environment variables are not set
-const defaultProductionOrigins = [undefined];
+const defaultProductionOrigins = ['https://v1rvx0b2fl.execute-api.ap-south-1.amazonaws.com/prod','https://qstash.upstash.io', undefined];
 const defaultDevelopmentOrigins = ['http://localhost:3000', 'http://localhost:8080', undefined];
 
 // CORS Configuration
@@ -19,7 +19,7 @@ const corsOptions = {
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Upstash-Signature', 'X-Requested-With'],
   exposedHeaders: ['Content-Length', 'X-Request-Id'],
   credentials: true,         // Allow cookies to be sent with requests
   maxAge: CORS_MAX_AGE ? parseInt(CORS_MAX_AGE, 10) : 86400, // Default to 24 hours if not specified
